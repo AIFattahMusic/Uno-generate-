@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>FattahMusic AI</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+
+*{box-sizing:border-box}
+
+body{
+margin:0;
+font-family:Inter;
+background:radial-gradient(circle at top,#1d1c40,#050510);
+color:white;
+min-height:100vh;
+}
+
+/* glowing background */
+
+body:before{
+content:"";
+position:fixed;
+width:700px;
+height:700px;
+background:radial-gradient(circle,#6b5cff66,transparent);
+top:-200px;
+left:50%;
+transform:translateX(-50%);
+filter:blur(120px);
+z-index:-1;
+}
+
+/* header */
+
+header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:25px 35px;
+}
+
+.logo{
+font-size:26px;
+font-weight:700;
+background:linear-gradient(90deg,#64ffd8,#6ab0ff);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+/* container */
+
+.container{
+max-width:650px;
+margin:auto;
+padding:20px;
+}
+
+/* glass card */
+
+.card{
+
+background:rgba(255,255,255,0.05);
+
+border:1px solid rgba(255,255,255,0.08);
+
+border-radius:22px;
+
+padding:30px;
+
+backdrop-filter:blur(20px);
+
+box-shadow:0 0 40px rgba(90,70,255,.35);
+
+}
+
+/* prompt */
+
+textarea{
+
+width:100%;
+
+background:#0f0f1d;
+
+border:none;
+
+border-radius:14px;
+
+padding:18px;
+
+color:white;
+
+font-size:16px;
+
+resize:none;
+
+}
+
+/* button */
+
+.generate{
+
+margin-top:20px;
+
+width:100%;
+
+padding:18px;
+
+border:none;
+
+border-radius:30px;
+
+font-size:18px;
+
+cursor:pointer;
+
+background:linear-gradient(90deg,#67ffd8,#ff6bff);
+
+font-weight:600;
+
+}
+
+/* loading */
+
+.loading{
+display:none;
+text-align:center;
+margin-top:40px;
+}
+
+.loading img{
+width:260px;
+border-radius:18px;
+box-shadow:0 15px 40px rgba(0,0,0,.7);
+}
+
+/* player */
+
+.player{
+display:none;
+margin-top:40px;
+text-align:center;
+}
+
+.player img{
+width:260px;
+border-radius:16px;
+margin-bottom:20px;
+}
+
+audio{
+width:100%;
+margin-bottom:20px;
+}
+
+/* actions */
+
+.actions button{
+
+padding:12px 20px;
+
+border:none;
+
+border-radius:12px;
+
+cursor:pointer;
+
+margin:5px;
+
+font-weight:600;
+
+}
+
+.download{
+background:#28c76f;
+color:white;
+}
+
+.share{
+background:#3b82f6;
+color:white;
+}
+
+/* lyrics */
+
+.lyrics{
+margin-top:20px;
+color:#bbb;
+white-space:pre-line;
+font-size:14px;
+line-height:1.6;
+}
+
+footer{
+margin-top:60px;
+text-align:center;
+opacity:.6;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<div class="logo">FattahMusic AI</div>
+
+</header>
+
+<div class="container">
+
+<div class="card" id="generator">
+
+<h2>Create Music with AI</h2>
+
+<textarea id="prompt" rows="4">
+Create an energetic pop song about summer vacation
+</textarea>
+
+<button class="generate" onclick="generateMusic()">
+Generate Music
+</button>
+
+</div>
+
+
+<div class="loading" id="loading">
+
+<img id="loadingImg" src="https://picsum.photos/400?1">
+
+<p>AI is composing your music...</p>
+
+</div>
+
+
+<div class="player" id="player">
+
+<img id="cover">
+
+<audio controls id="audio"></audio>
+
+<div class="actions">
+
+<button class="download" onclick="downloadSong()">Download</button>
+
+<button class="share" onclick="shareSong()">Share</button>
+
+</div>
+
+<div class="lyrics" id="lyrics"></div>
+
+</div>
+
+</div>
+
+<footer>
+AI Music Generator
+</footer>
+
+<script>
+
+/* loading slideshow */
+
+const loadingImages=[
+"https://picsum.photos/400?1",
+"https://picsum.photos/400?2",
+"https://picsum.photos/400?3",
+"https://picsum.photos/400?4"
+]
+
+let slide=0
+
+setInterval(()=>{
+
+document.getElementById("loadingImg").src=loadingImages[slide]
+
+slide++
+
+if(slide>=loadingImages.length) slide=0
+
+},2000)
+
+
+let taskId=""
+let audioURL=""
+let checking=false
+
+/* GENERATE */
+
+async function generateMusic(){
+
+const prompt=document.getElementById("prompt").value
+
+document.getElementById("generator").style.display="none"
+
+document.getElementById("loading").style.display="block"
+
+const res=await fetch(
+"https://musik-android.onrender.com/generate-music",
+{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+prompt:prompt,
+style:"Pop"
+})
+})
+
+const data=await res.json()
+
+taskId=data.data.taskId
+
+checking=true
+
+checkStatus()
+
+}
+
+/* CHECK STATUS LOOP */
+
+async function checkStatus(){
+
+if(!checking) return
+
+try{
+
+const res=await fetch(
+"https://musik-android.onrender.com/record-info/"+taskId
+)
+
+const result=await res.json()
+
+if(result.data){
+
+const song=result.data
+
+if(
+song.state==="completed" ||
+song.state==="success" ||
+song.state==="succeeded"
+){
+
+checking=false
+
+audioURL=song.audioUrl
+
+document.getElementById("cover").src=song.imageUrl
+
+document.getElementById("audio").src=song.audioUrl
+
+document.getElementById("lyrics").innerText=song.lyrics || ""
+
+document.getElementById("loading").style.display="none"
+
+document.getElementById("player").style.display="block"
+
+return
+
+}
+
+}
+
+setTimeout(checkStatus,5000)
+
+}catch(e){
+
+setTimeout(checkStatus,5000)
+
+}
+
+}
+
+/* DOWNLOAD */
+
+function downloadSong(){
+
+const a=document.createElement("a")
+
+a.href=audioURL
+
+a.download="ai-song.mp3"
+
+a.click()
+
+}
+
+/* SHARE */
+
+function shareSong(){
+
+if(navigator.share){
+
+navigator.share({
+title:"AI Music",
+url:audioURL
+})
+
+}else{
+
+alert("Share tidak support di browser")
+
+}
+
+}
+
+</script>
+
+</body>
+</html>
